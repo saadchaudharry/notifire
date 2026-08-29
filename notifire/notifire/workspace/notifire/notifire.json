@@ -1,0 +1,49 @@
+{
+ "category": "Administration",
+ "charts": [],
+ "content": "[{\"id\":\"nb-header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Notifire</b> \\u00b7 Frappe Cloud webhook notifications</span>\",\"col\":12}},{\"id\":\"nb-shortcuts\",\"type\":\"shortcut\",\"data\":{\"shortcut_list\":[{\"label\":\"Notification Groups\",\"link_to\":\"Notifire Group\",\"type\":\"DocType\"},{\"label\":\"Recipients\",\"link_to\":\"Notifire Recipient\",\"type\":\"DocType\"},{\"label\":\"Logs\",\"link_to\":\"Notifire Log\",\"type\":\"DocType\"},{\"label\":\"Notifire Settings\",\"link_to\":\"Notifire Settings\",\"type\":\"DocType\"}]},\"col\":12},{\"id\":\"nb-para\",\"type\":\"paragraph\",\"data\":{\"text\":\"Point each monitored Frappe Cloud site's webhook at /api/method/notifire.api.webhook?group=<slug> with an X-Webhook-Secret header. Secrets, hostnames and the dedupe window are managed inside each Notification Group / Notifire Settings.\",\"col\":12}}]",
+ "creation": "2026-08-29 00:00:00.000000",
+ "doctype": "Workspace",
+ "for_user": "",
+ "icon": "bell",
+ "is_hidden": 0,
+ "label": "Notifire",
+ "links": [],
+ "modified": "2026-08-29 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Notifire",
+ "name": "Notifire",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "roles": [],
+ "sequence_id": 99.0,
+ "shortcuts": [
+  {
+   "color": "Blue",
+   "label": "Notification Groups",
+   "link_to": "Notifire Group",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "label": "Recipients",
+   "link_to": "Notifire Recipient",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "label": "Logs",
+   "link_to": "Notifire Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "label": "Notifire Settings",
+   "link_to": "Notifire Settings",
+   "type": "DocType"
+  }
+ ],
+ "title": "Notifire"
+}

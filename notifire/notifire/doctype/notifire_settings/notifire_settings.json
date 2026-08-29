@@ -1,0 +1,83 @@
+{
+ "actions": [],
+ "creation": "2026-08-29 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "email_subject_prefix",
+  "column_break_basic",
+  "dedupe_window_minutes",
+  "section_auth",
+  "fallback_secret",
+  "column_break_auth",
+  "from_email"
+ ],
+ "fields": [
+  {
+   "default": "1",
+   "description": "Uncheck to accept webhooks without sending email (they are logged as Received).",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Email notifications enabled"
+  },
+  {
+   "default": "Notifire",
+   "description": "Subject format: [<prefix>] <event> - <site|reference>.",
+   "fieldname": "email_subject_prefix",
+   "fieldtype": "Data",
+   "label": "Email subject prefix"
+  },
+  {
+   "fieldname": "column_break_basic",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "10",
+   "description": "Anti email-storm guard: within this window, repeat webhooks for the same event + site are logged as Suppressed instead of emailed. Protects provider quotas such as Gmail's ~500 mails/day cap. 0 disables.",
+   "fieldname": "dedupe_window_minutes",
+   "fieldtype": "Int",
+   "label": "Dedupe window (minutes)"
+  },
+  {
+   "fieldname": "section_auth",
+   "fieldtype": "Section Break",
+   "label": "Webhook authentication and delivery"
+  },
+  {
+   "description": "Master X-Webhook-Secret accepted by every endpoint (used when a group has no own secret, and to protect unknown-slug 404s). Generated at install; rotate only if you know every sender's setup.",
+   "fieldname": "fallback_secret",
+   "fieldtype": "Password",
+   "label": "Global fallback secret"
+  },
+  {
+   "fieldname": "column_break_auth",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Optional sender override. Leave empty to use the default outgoing email account's sender.",
+   "fieldname": "from_email",
+   "fieldtype": "Data",
+   "label": "From email"
+  }
+ ],
+ "issingle": 1,
+ "modified": "2026-08-29 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Notifire",
+ "name": "Notifire Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

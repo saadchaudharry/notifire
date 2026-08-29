@@ -1,0 +1,110 @@
+{
+ "actions": [],
+ "autoname": "field:slug",
+ "creation": "2026-08-29 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "slug",
+  "column_break_basic",
+  "enabled",
+  "fallback",
+  "secret",
+  "section_hostnames",
+  "hostnames"
+ ],
+ "fields": [
+  {
+   "description": "Display name for this notification group.",
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "description": "Lowercase id used in the webhook URL (/api/method/notifire.api.webhook?group=<slug>). Auto-filled from the title; lowercase letters, numbers and hyphens only.",
+   "fieldname": "slug",
+   "fieldtype": "Data",
+   "label": "Slug",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "column_break_basic",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "description": "Disabled groups behave like unknown endpoints (they require the global secret before the 404 is revealed).",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Enabled"
+  },
+  {
+   "description": "Receives webhooks whose site does not match any group hostname (or is absent). Only one group can be the fallback.",
+   "fieldname": "fallback",
+   "fieldtype": "Check",
+   "in_standard_filter": 1,
+   "label": "Fallback group"
+  },
+  {
+   "description": "Accepted in the X-Webhook-Secret header for this endpoint. Generated automatically when you save; use 'Rotate Secret' in the form to replace it. The global fallback secret from Notifire Settings also works.",
+   "fieldname": "secret",
+   "fieldtype": "Password",
+   "label": "Webhook secret"
+  },
+  {
+   "fieldname": "section_hostnames",
+   "fieldtype": "Section Break",
+   "label": "Frappe Cloud site hostnames"
+  },
+  {
+   "description": "One hostname per row. A single Frappe Cloud account can serve many benches/sites - list every hostname whose webhooks should route to this group. Hostnames are unique across all groups and stored lowercase.",
+   "fieldname": "hostnames",
+   "fieldtype": "Table",
+   "label": "Site hostnames",
+   "options": "Notifire Group Hostname"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [
+  {
+   "group": "Recipients",
+   "link_doctype": "Notifire Recipient",
+   "link_fieldname": "group"
+  },
+  {
+   "group": "Activity",
+   "link_doctype": "Notifire Log",
+   "link_fieldname": "group"
+  }
+ ],
+ "modified": "2026-08-29 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Notifire",
+ "name": "Notifire Group",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
