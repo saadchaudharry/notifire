@@ -67,10 +67,11 @@
   },
   {
    "default": "0",
-   "description": "True when the notification was routed to the fallback group.",
+   "description": "Set when the event matched no hostname and was routed to the fallback group.",
    "fieldname": "via_fallback",
    "fieldtype": "Check",
-   "label": "Via fallback",
+   "in_standard_filter": 1,
+   "label": "Via Fallback",
    "read_only": 1
   },
   {
@@ -81,7 +82,7 @@
   {
    "fieldname": "sent_to",
    "fieldtype": "Small Text",
-   "label": "Sent to",
+   "label": "Sent To",
    "read_only": 1
   },
   {
@@ -89,17 +90,16 @@
    "fieldtype": "Column Break"
   },
   {
-   "depends_on": "eval:doc.status=='Failed' || doc.status=='Suppressed'",
-   "description": "Failure reason / processing note. Never contains secrets.",
+   "description": "Failure reason or processing note. Never contains secrets.",
    "fieldname": "error",
    "fieldtype": "Small Text",
-   "label": "Note / error",
+   "label": "Note / Error",
    "read_only": 1
   },
   {
    "fieldname": "section_payload",
    "fieldtype": "Section Break",
-   "label": "Webhook payload"
+   "label": "Webhook Payload"
   },
   {
    "fieldname": "payload",
@@ -123,11 +123,15 @@
    "export": 1,
    "read": 1,
    "report": 1,
-   "role": "System Manager"
+   "role": "System Manager",
+   "write": 1
   }
  ],
+ "search_fields": "event,site,status",
+ "show_title_field_in_link": 1,
  "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
+ "title_field": "event",
  "track_changes": 0
 }

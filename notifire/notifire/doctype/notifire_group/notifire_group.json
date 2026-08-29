@@ -11,13 +11,18 @@
   "column_break_basic",
   "enabled",
   "fallback",
+  "site_count",
+  "section_endpoint",
+  "webhook_html",
   "secret",
-  "section_hostnames",
-  "hostnames"
+  "section_sites",
+  "sites_html",
+  "section_recipients",
+  "recipients_html"
  ],
  "fields": [
   {
-   "description": "Display name for this notification group.",
+   "description": "Display name, e.g. \"Pre Prod Ops\".",
    "fieldname": "title",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -25,7 +30,7 @@
    "reqd": 1
   },
   {
-   "description": "Lowercase id used in the webhook URL (/api/method/notifire.api.webhook?group=<slug>). Auto-filled from the title; lowercase letters, numbers and hyphens only.",
+   "description": "Used in the webhook URL. Auto-filled from the title; lowercase letters, numbers and hyphens only.",
    "fieldname": "slug",
    "fieldtype": "Data",
    "label": "Slug",
@@ -38,7 +43,7 @@
   },
   {
    "default": "1",
-   "description": "Disabled groups behave like unknown endpoints (they require the global secret before the 404 is revealed).",
+   "description": "A disabled group behaves like an unknown endpoint.",
    "fieldname": "enabled",
    "fieldtype": "Check",
    "in_list_view": 1,
@@ -46,35 +51,71 @@
    "label": "Enabled"
   },
   {
-   "description": "Receives webhooks whose site does not match any group hostname (or is absent). Only one group can be the fallback.",
+   "description": "Catches webhooks whose site matches no hostname (bench and deploy events carry no site). Only one group can be the fallback.",
    "fieldname": "fallback",
    "fieldtype": "Check",
    "in_standard_filter": 1,
-   "label": "Fallback group"
+   "label": "Fallback Group"
   },
   {
-   "description": "Accepted in the X-Webhook-Secret header for this endpoint. Generated automatically when you save; use 'Rotate Secret' in the form to replace it. The global fallback secret from Notifire Settings also works.",
+   "default": "0",
+   "description": "Number of hostnames mapped to this group.",
+   "fieldname": "site_count",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Sites",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_endpoint",
+   "fieldtype": "Section Break",
+   "label": "Webhook Endpoint"
+  },
+  {
+   "fieldname": "webhook_html",
+   "fieldtype": "HTML",
+   "label": "Webhook"
+  },
+  {
+   "description": "Sent by the webhook caller in the X-Webhook-Secret header. Generated automatically on save.",
    "fieldname": "secret",
    "fieldtype": "Password",
-   "label": "Webhook secret"
+   "hidden": 1,
+   "label": "Webhook Secret",
+   "no_copy": 1,
+   "read_only": 1
   },
   {
-   "fieldname": "section_hostnames",
+   "fieldname": "section_sites",
    "fieldtype": "Section Break",
-   "label": "Frappe Cloud site hostnames"
+   "label": "Site Hostnames"
   },
   {
-   "description": "One hostname per row. A single Frappe Cloud account can serve many benches/sites - list every hostname whose webhooks should route to this group. Hostnames are unique across all groups and stored lowercase.",
-   "fieldname": "hostnames",
-   "fieldtype": "Table",
-   "label": "Site hostnames",
-   "options": "Notifire Group Hostname"
+   "fieldname": "sites_html",
+   "fieldtype": "HTML",
+   "label": "Hostname Map"
+  },
+  {
+   "fieldname": "section_recipients",
+   "fieldtype": "Section Break",
+   "label": "Recipients"
+  },
+  {
+   "fieldname": "recipients_html",
+   "fieldtype": "HTML",
+   "label": "Recipients"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [
   {
-   "group": "Recipients",
+   "group": "Routing",
+   "link_doctype": "Notifire Site",
+   "link_fieldname": "group"
+  },
+  {
+   "group": "Routing",
    "link_doctype": "Notifire Recipient",
    "link_fieldname": "group"
   },
@@ -103,8 +144,11 @@
    "write": 1
   }
  ],
+ "search_fields": "title,slug",
+ "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
+ "title_field": "title",
  "track_changes": 1
 }

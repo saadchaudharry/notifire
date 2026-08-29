@@ -267,26 +267,92 @@ def event_ref_name(event, site, data):
 
 
 # ---------------------------------------------------------------------------
+# Hostname registry (Notifire Site)
+# ---------------------------------------------------------------------------
+
+def update_site_count(group):
+    """Keep Notifire Group.site_count in sync for the list view."""
+    if not group or not frappe.db.exists("Notifire Group", group):
+        return
+    count = frappe.db.count("Notifire Site", {"group": group})
+    frappe.db.set_value("Notifire Group", group, "site_count", count, update_modified=False)
+
+
+def clear_scopes_for_hostname(hostname, group=None):
+    """Delete recipient scope rows pointing at a hostname.
+
+    `group` narrows the deletion to recipients that do *not* belong to that
+    group, which is what a hostname move needs.
+    """
+    hostname = (hostname or "").strip().lower()
+    if not hostname:
+        return 0
+
+    rows = frappe.get_all(
+        "Notifire Recipient Scope",
+        filters={"parenttype": "Notifire Recipient", "hostname": hostname},
+        fields=["name", "parent"],
+    )
+    if not rows:
+        return 0
+
+    parents = {row.parent for row in rows}
+    keep = set()
+    if group:
+        for parent in parents:
+            if frappe.db.get_value("Notifire Recipient", parent, "group") == group:
+                keep.add(parent)
+
+    removed = 0
+    touched = set()
+    for row in rows:
+        if row.parent in keep:
+            continue
+        frappe.db.delete("Notifire Recipient Scope", {"name": row.name})
+        touched.add(row.parent)
+        removed += 1
+
+    # A scoped recipient that just lost its last hostname would otherwise
+    # silently become a group default - flip it back explicitly.
+    for parent in touched:
+        remaining = frappe.db.count(
+            "Notifire Recipient Scope", {"parenttype": "Notifire Recipient", "parent": parent}
+        )
+        if not remaining:
+            frappe.db.set_value(
+                "Notifire Recipient", parent, "scope_mode", "All sites in this group",
+                update_modified=False,
+            )
+    return removed
+
+
+def clear_foreign_scopes(hostname, group):
+    """Drop scope rows for a hostname that belong to some *other* group."""
+    return clear_scopes_for_hostname(hostname, group=group)
+
+
+# ---------------------------------------------------------------------------
 # Recipient resolution
 # ---------------------------------------------------------------------------
 
 def find_group_for_site(site):
-    """The enabled group whose hostname table contains this site hostname.
+    """The enabled group this hostname routes to, or None.
 
-    Hostname rows are stored lowercase and the incoming site is lowercased,
-    so matching is exact and case-insensitive on every database backend.
+    Hostnames live in the Notifire Site registry, whose docname *is* the
+    lowercase hostname, so the lookup is a primary-key hit and routing can
+    never be ambiguous.
     """
-    rows = frappe.get_all(
-        "Notifire Group Hostname",
-        filters={"hostname": (site or "").strip().lower(), "parenttype": "Notifire Group"},
-        fields=["parent"],
-        order_by="creation asc",
-        limit_page_length=1,
+    hostname = (site or "").strip().lower()
+    if not hostname:
+        return None
+    row = frappe.db.get_value(
+        "Notifire Site", hostname, ["group", "enabled"], as_dict=True
     )
-    for row in rows:
-        if frappe.db.get_value("Notifire Group", row.parent, "enabled"):
-            return row.parent
-    return None
+    if not row or not row.enabled or not row.group:
+        return None
+    if not frappe.db.get_value("Notifire Group", row.group, "enabled"):
+        return None
+    return row.group
 
 
 def get_fallback_group():
@@ -327,15 +393,14 @@ def _recipient_rows(group_name):
 def resolve_recipients(site):
     """Resolve who should receive a notification for a given site.
 
-    Matching: the incoming hostname is looked up across every enabled
-    group's configured site hostnames (case-insensitive). One group may
-    cover several hostnames (multiple benches/sites on one Frappe Cloud
-    account).
+    Matching: the incoming hostname is looked up in the Notifire Site
+    registry (case-insensitive). One group may cover many hostnames
+    (multiple benches/sites on one Frappe Cloud account).
 
     Recipient precedence inside a matched group:
-      1. Recipients scoped to the matched hostname (their "Applies to"
-         selection contains that hostname).
-      2. Group-level default recipients (no hostname scope at all), used
+      1. Recipients scoped to the matched hostname (their "Selected sites"
+         list contains it).
+      2. Group-level default recipients (no site selection at all), used
          when the matched hostname has none of its own.
     Unknown/absent site -> fallback group recipients.
 
@@ -590,7 +655,7 @@ def process_webhook_event(event, payload):
             return finish(
                 "Suppressed",
                 "Duplicate within the {} min dedupe window - email suppressed "
-                "(same event last sent {}).".format(window, (duplicate.creation or "")[:16]),
+                "(same event last sent {}).".format(window, str(duplicate.creation or "")[:16]),
                 "suppressed",
             )
 
@@ -600,3 +665,48 @@ def process_webhook_event(event, payload):
     if ok:
         return finish("Sent", "", "sent")
     return finish("Failed", error, "failed")
+
+
+def resend_log(log_name):
+    """Retry delivery for an existing log entry, ignoring the dedupe window.
+
+    Recipients are resolved again rather than reused, so fixing the routing
+    and pressing Send Now does what the operator expects.
+    """
+    log = frappe.get_doc("Notifire Log", log_name)
+    try:
+        payload = json.loads(log.payload) if isinstance(log.payload, str) else (log.payload or {})
+    except (ValueError, TypeError):
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+
+    event = log.event or payload.get("event") or "Notification"
+    site = log.site or None
+    recipients, group, used_fallback = resolve_recipients(site)
+
+    if not recipients:
+        note = _("Still no recipients for this event - nothing was sent.")
+        frappe.db.set_value(
+            "Notifire Log", log.name, {"status": "Failed", "error": note, "group": group or ""}
+        )
+        return {"ok": False, "message": note}
+
+    subject, text_body, html_body = build_notification(event, site, payload)
+    ok, error = deliver_message(subject, text_body, html_body, recipients, log.name)
+
+    frappe.db.set_value(
+        "Notifire Log",
+        log.name,
+        {
+            "status": "Sent" if ok else "Failed",
+            "error": "" if ok else error,
+            "sent_to": ", ".join(recipients),
+            "group": group or "",
+            "via_fallback": 1 if used_fallback else 0,
+        },
+    )
+    return {
+        "ok": ok,
+        "message": _("Sent to {0}").format(", ".join(recipients)) if ok else error,
+    }

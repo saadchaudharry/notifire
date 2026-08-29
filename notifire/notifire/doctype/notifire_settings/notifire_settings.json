@@ -4,61 +4,108 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "section_health",
+  "health_html",
+  "section_delivery",
   "enabled",
   "email_subject_prefix",
-  "column_break_basic",
+  "column_break_delivery",
+  "from_email",
+  "section_dedupe",
   "dedupe_window_minutes",
+  "column_break_dedupe",
+  "dedupe_help",
   "section_auth",
   "fallback_secret",
   "column_break_auth",
-  "from_email"
+  "auth_help"
  ],
  "fields": [
   {
+   "fieldname": "section_health",
+   "fieldtype": "Section Break",
+   "label": "Status"
+  },
+  {
+   "fieldname": "health_html",
+   "fieldtype": "HTML",
+   "label": "Health"
+  },
+  {
+   "fieldname": "section_delivery",
+   "fieldtype": "Section Break",
+   "label": "Email Delivery"
+  },
+  {
    "default": "1",
-   "description": "Uncheck to accept webhooks without sending email (they are logged as Received).",
+   "description": "Uncheck to keep accepting and logging webhooks without sending any email. Logs show them as Received.",
    "fieldname": "enabled",
    "fieldtype": "Check",
-   "label": "Email notifications enabled"
+   "label": "Email Notifications Enabled"
   },
   {
    "default": "Notifire",
-   "description": "Subject format: [<prefix>] <event> - <site|reference>.",
+   "description": "Subjects read: [prefix] Event - site.",
    "fieldname": "email_subject_prefix",
    "fieldtype": "Data",
-   "label": "Email subject prefix"
+   "label": "Email Subject Prefix"
   },
   {
-   "fieldname": "column_break_basic",
+   "fieldname": "column_break_delivery",
    "fieldtype": "Column Break"
   },
   {
+   "description": "Optional sender override. Leave empty to use the site's default outgoing email account.",
+   "fieldname": "from_email",
+   "fieldtype": "Data",
+   "label": "From Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "section_dedupe",
+   "fieldtype": "Section Break",
+   "label": "Email-storm Guard"
+  },
+  {
    "default": "10",
-   "description": "Anti email-storm guard: within this window, repeat webhooks for the same event + site are logged as Suppressed instead of emailed. Protects provider quotas such as Gmail's ~500 mails/day cap. 0 disables.",
+   "description": "Within this window, repeats of the same event for the same site are logged as Suppressed instead of emailed. 0 disables it, 1440 is the maximum.",
    "fieldname": "dedupe_window_minutes",
    "fieldtype": "Int",
-   "label": "Dedupe window (minutes)"
+   "label": "Dedupe Window (minutes)",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "column_break_dedupe",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "dedupe_help",
+   "fieldtype": "HTML",
+   "label": "About the dedupe window",
+   "options": "<div class=\"text-muted\" style=\"font-size:var(--text-sm)\">A flapping site cycling Active → Broken → Active sends one webhook per transition. Without this window a single bad night can burn a provider's daily send quota and silently stop every other notification.</div>"
   },
   {
    "fieldname": "section_auth",
    "fieldtype": "Section Break",
-   "label": "Webhook authentication and delivery"
+   "label": "Webhook Authentication"
   },
   {
-   "description": "Master X-Webhook-Secret accepted by every endpoint (used when a group has no own secret, and to protect unknown-slug 404s). Generated at install; rotate only if you know every sender's setup.",
+   "description": "Master X-Webhook-Secret accepted by every endpoint. Generated at install. Rotate it only if you can update every sender that uses it.",
    "fieldname": "fallback_secret",
    "fieldtype": "Password",
-   "label": "Global fallback secret"
+   "label": "Global Fallback Secret",
+   "no_copy": 1,
+   "read_only": 1
   },
   {
    "fieldname": "column_break_auth",
    "fieldtype": "Column Break"
   },
   {
-   "description": "Optional sender override. Leave empty to use the default outgoing email account's sender.",
-   "fieldname": "from_email",
-   "fieldtype": "Data",
-   "label": "From email"
+   "fieldname": "auth_help",
+   "fieldtype": "HTML",
+   "label": "About secrets",
+   "options": "<div class=\"text-muted\" style=\"font-size:var(--text-sm)\">Each group also has its own secret, which is the one you should normally configure on a sender. The global secret exists as a master key and to keep unknown endpoints from being enumerated.</div>"
   }
  ],
  "issingle": 1,

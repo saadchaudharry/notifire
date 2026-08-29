@@ -6,5 +6,6 @@ from frappe.model.document import Document
 
 class NotifireRecipientScope(Document):
     def validate(self):
-        # Scope hostnames are matched case-insensitively; store lowercase.
+        # The link target is a Notifire Site, whose docname is always the
+        # lowercase hostname - normalize anyway for rows created via the API.
         self.hostname = (self.hostname or "").strip().lower()

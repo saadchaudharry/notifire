@@ -13,6 +13,10 @@ after_install = "notifire.install.after_install"
 # Webhook endpoint (guest, X-Webhook-Secret authenticated):
 #   POST /api/method/notifire.api.webhook?group=<slug>
 #
+# notifire/api.py is a thin shim over notifire/notifire/api.py so the short
+# path above is the one senders are configured with; the fully qualified
+# notifire.notifire.api.webhook keeps working as well.
+#
 # No scheduler events and no doc_events: everything happens inside the
 # webhook request, so a plain `bench serve` (or a normal production bench)
 # handles the whole flow. Emails are sent synchronously (now=True) so the

@@ -1,14 +1,108 @@
 {
- "category": "Administration",
  "charts": [],
- "content": "[{\"id\":\"nb-header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Notifire</b> \\u00b7 Frappe Cloud webhook notifications</span>\",\"col\":12}},{\"id\":\"nb-shortcuts\",\"type\":\"shortcut\",\"data\":{\"shortcut_list\":[{\"label\":\"Notification Groups\",\"link_to\":\"Notifire Group\",\"type\":\"DocType\"},{\"label\":\"Recipients\",\"link_to\":\"Notifire Recipient\",\"type\":\"DocType\"},{\"label\":\"Logs\",\"link_to\":\"Notifire Log\",\"type\":\"DocType\"},{\"label\":\"Notifire Settings\",\"link_to\":\"Notifire Settings\",\"type\":\"DocType\"}]},\"col\":12},{\"id\":\"nb-para\",\"type\":\"paragraph\",\"data\":{\"text\":\"Point each monitored Frappe Cloud site's webhook at /api/method/notifire.api.webhook?group=<slug> with an X-Webhook-Secret header. Secrets, hostnames and the dedupe window are managed inside each Notification Group / Notifire Settings.\",\"col\":12}}]",
+ "content": "[{\"id\": \"nf_header\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Notifire</b></span>\", \"col\": 12}}, {\"id\": \"nf_intro\", \"type\": \"paragraph\", \"data\": {\"text\": \"Frappe Cloud webhooks in, email out. A <b>group</b> is one webhook endpoint, a <b>hostname</b> routes a site to a group, and a <b>recipient</b> is an address that receives that group's events.\", \"col\": 12}}, {\"id\": \"nf_sc_groups\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Notification Groups\", \"col\": 3}}, {\"id\": \"nf_sc_sites\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Site Hostnames\", \"col\": 3}}, {\"id\": \"nf_sc_recipients\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Recipients\", \"col\": 3}}, {\"id\": \"nf_sc_failed\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Failed Events\", \"col\": 3}}, {\"id\": \"nf_spacer_1\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"nf_card_setup\", \"type\": \"card\", \"data\": {\"card_name\": \"Set Up Routing\", \"col\": 4}}, {\"id\": \"nf_card_monitor\", \"type\": \"card\", \"data\": {\"card_name\": \"Monitor\", \"col\": 4}}, {\"id\": \"nf_card_config\", \"type\": \"card\", \"data\": {\"card_name\": \"Configure\", \"col\": 4}}, {\"id\": \"nf_spacer_2\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"nf_steps\", \"type\": \"paragraph\", \"data\": {\"text\": \"<b>First run</b> &nbsp;1. Set up a default outgoing Email Account on this site. &nbsp;2. Create a notification group. &nbsp;3. Map your site hostnames to it. &nbsp;4. Add at least one recipient. &nbsp;5. Copy the webhook URL and secret from the group form into each monitored site's webhook settings, then send a <i>Webhook Validate</i> event to confirm the wiring.\", \"col\": 12}}]",
  "creation": "2026-08-29 00:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
  "doctype": "Workspace",
  "for_user": "",
- "icon": "bell",
+ "hide_custom": 0,
+ "icon": "notification",
+ "idx": 0,
  "is_hidden": 0,
  "label": "Notifire",
- "links": [],
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Set Up Routing",
+   "link_count": 3,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Notifire Group",
+   "link_count": 0,
+   "link_to": "Notifire Group",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Notifire Site",
+   "link_count": 0,
+   "link_to": "Notifire Site",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Notifire Recipient",
+   "link_count": 0,
+   "link_to": "Notifire Recipient",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Monitor",
+   "link_count": 1,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Notifire Log",
+   "link_count": 0,
+   "link_to": "Notifire Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Configure",
+   "link_count": 2,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Notifire Settings",
+   "link_count": 0,
+   "link_to": "Notifire Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Email Account",
+   "link_count": 0,
+   "link_to": "Email Account",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
  "modified": "2026-08-29 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Notifire",
@@ -17,31 +111,38 @@
  "owner": "Administrator",
  "parent_page": "",
  "public": 1,
+ "quick_lists": [],
  "roles": [],
- "sequence_id": 99.0,
+ "sequence_id": 25.0,
  "shortcuts": [
   {
    "color": "Blue",
+   "doc_view": "List",
    "label": "Notification Groups",
    "link_to": "Notifire Group",
    "type": "DocType"
   },
   {
    "color": "Blue",
+   "doc_view": "List",
+   "label": "Site Hostnames",
+   "link_to": "Notifire Site",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
    "label": "Recipients",
    "link_to": "Notifire Recipient",
    "type": "DocType"
   },
   {
-   "color": "Green",
-   "label": "Logs",
+   "color": "Red",
+   "doc_view": "List",
+   "format": "{} Failed",
+   "label": "Failed Events",
    "link_to": "Notifire Log",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "label": "Notifire Settings",
-   "link_to": "Notifire Settings",
+   "stats_filter": "{\"status\":\"Failed\"}",
    "type": "DocType"
   }
  ],

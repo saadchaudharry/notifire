@@ -31,6 +31,51 @@ class TestNotifireRecipient(FrappeTestCase):
         recipient = make_recipient(group, "x@example.com", applies_to=["H1.Example.COM"])
         self.assertEqual(recipient.get("applies_to")[0].hostname, "h1.example.com")
 
+    def test_scope_mode_all_sites_clears_selection(self):
+        group = make_group("ModeAll", ["h1.example.com"])
+        recipient = make_recipient(group, "x@example.com", applies_to=["h1.example.com"])
+        recipient.scope_mode = "All sites in this group"
+        recipient.save()
+        self.assertEqual(recipient.get("applies_to"), [])
+
+    def test_scope_mode_selected_requires_a_site(self):
+        group = make_group("ModeSelected", ["h1.example.com"])
+        recipient = make_recipient(group, "x@example.com")
+        recipient.scope_mode = "Only selected sites"
+        with self.assertRaises(frappe.ValidationError):
+            recipient.save()
+
+    def test_scope_mode_inferred_when_missing(self):
+        group = make_group("ModeInferred", ["h1.example.com"])
+        recipient = frappe.get_doc({
+            "doctype": "Notifire Recipient",
+            "group": group.name,
+            "email": "x@example.com",
+            "applies_to": [{"hostname": "h1.example.com"}],
+        }).insert()
+        self.assertEqual(recipient.scope_mode, "Only selected sites")
+
+    def test_scope_from_another_group_rejected(self):
+        other = make_group("Foreign", ["foreign.example.com"])
+        group = make_group("Local", ["local.example.com"])
+        self.assertEqual(
+            frappe.db.get_value("Notifire Site", "foreign.example.com", "group"), other.name
+        )
+        with self.assertRaises(frappe.ValidationError):
+            make_recipient(group, "x@example.com", applies_to=["foreign.example.com"])
+
+    def test_unknown_scope_rejected(self):
+        group = make_group("UnknownScope", ["known.example.com"])
+        with self.assertRaises(frappe.ValidationError):
+            make_recipient(group, "x@example.com", applies_to=["ghost.example.com"])
+
+    def test_duplicate_scope_rows_collapsed(self):
+        group = make_group("DupScope", ["h1.example.com"])
+        recipient = make_recipient(
+            group, "x@example.com", applies_to=["h1.example.com", "h1.example.com"]
+        )
+        self.assertEqual(len(recipient.get("applies_to")), 1)
+
     def test_disabled_recipient_excluded(self):
         group = make_group("Disabled", ["h1.example.com"])
         recipient = make_recipient(group, "x@example.com")

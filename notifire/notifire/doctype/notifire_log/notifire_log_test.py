@@ -226,3 +226,42 @@ class TestNotifireWebhook(FrappeTestCase):
             resp = call_webhook(group.slug, payload, secret=secret)
         self.assertEqual(resp["notification_status"], "skipped")
         send.assert_not_called()
+
+
+class TestNotifireResend(FrappeTestCase):
+    def test_resend_uses_current_routing(self):
+        group = make_group("Retry", ["site.example.com"])
+        secret = group.get_password("secret")
+        payload = {"event": "Site Status Update", "data": {"site": "site.example.com"}}
+
+        # No recipients yet: the event fails.
+        with mock.patch("frappe.sendmail") as send:
+            call_webhook(group.slug, payload, secret=secret)
+        send.assert_not_called()
+        log = frappe.get_all(
+            "Notifire Log", filters={"status": "Failed"}, fields=["name"], limit_page_length=1
+        )[0]
+
+        # Fix the routing, then retry the same log.
+        make_recipient(group, "ops@example.com")
+        with mock.patch("frappe.sendmail") as send:
+            result = api.resend_log(log.name)
+        self.assertTrue(result["ok"])
+        self.assertEqual(send.call_args.kwargs["recipients"], ["ops@example.com"])
+        self.assertEqual(frappe.db.get_value("Notifire Log", log.name, "status"), "Sent")
+
+    def test_resend_without_recipients_stays_failed(self):
+        group = make_group("RetryEmpty", ["site.example.com"])
+        secret = group.get_password("secret")
+        payload = {"event": "Site Status Update", "data": {"site": "site.example.com"}}
+        with mock.patch("frappe.sendmail"):
+            call_webhook(group.slug, payload, secret=secret)
+        log = frappe.get_all(
+            "Notifire Log", filters={"status": "Failed"}, fields=["name"], limit_page_length=1
+        )[0]
+
+        with mock.patch("frappe.sendmail") as send:
+            result = api.resend_log(log.name)
+        self.assertFalse(result["ok"])
+        send.assert_not_called()
+        self.assertEqual(frappe.db.get_value("Notifire Log", log.name, "status"), "Failed")

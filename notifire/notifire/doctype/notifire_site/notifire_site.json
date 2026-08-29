@@ -1,0 +1,105 @@
+{
+ "actions": [],
+ "autoname": "field:hostname",
+ "creation": "2026-08-29 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "hostname",
+  "label",
+  "column_break_basic",
+  "group",
+  "enabled",
+  "section_help",
+  "help_html"
+ ],
+ "fields": [
+  {
+   "description": "The Frappe Cloud site hostname exactly as it appears in the webhook payload, e.g. test465.frappe.cloud. Stored lowercase. Cannot be edited later - delete this row and add the correct hostname instead.",
+   "fieldname": "hostname",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Hostname",
+   "reqd": 1,
+   "set_only_once": 1,
+   "unique": 1
+  },
+  {
+   "description": "Optional note shown next to the hostname, e.g. 'Production - Acme' or 'Staging'.",
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Label"
+  },
+  {
+   "fieldname": "column_break_basic",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Every hostname routes to exactly one group.",
+   "fieldname": "group",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Notification Group",
+   "options": "Notifire Group",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "description": "Disabled hostnames stop matching: their events fall through to the fallback group.",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "section_help",
+   "fieldtype": "Section Break",
+   "label": "Who gets notified"
+  },
+  {
+   "fieldname": "help_html",
+   "fieldtype": "HTML",
+   "label": "Coverage"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [
+  {
+   "group": "Activity",
+   "link_doctype": "Notifire Log",
+   "link_fieldname": "site"
+  }
+ ],
+ "modified": "2026-08-29 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Notifire",
+ "name": "Notifire Site",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "quick_entry": 1,
+ "search_fields": "group,label",
+ "show_title_field_in_link": 1,
+ "sort_field": "hostname",
+ "sort_order": "ASC",
+ "states": [],
+ "title_field": "hostname",
+ "track_changes": 1
+}
