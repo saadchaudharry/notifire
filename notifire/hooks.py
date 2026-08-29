@@ -1,23 +1,17 @@
 app_name = "notifire"
 app_title = "Notifire"
 app_publisher = "Notifire contributors"
-app_description = "Frappe Cloud webhook receiver: route site and bench events to notification groups, with email-storm dedupe."
+app_description = "Frappe Cloud webhook receiver: email site, bench and deploy events to the right people."
 app_email = "support@example.com"
 app_license = "mit"
 
-# Runs on plain Frappe v14+ (no ERPNext or other apps required).
 required_apps = []
 
 after_install = "notifire.install.after_install"
 
-# Webhook endpoint (guest, X-Webhook-Secret authenticated):
-#   POST /api/method/notifire.api.webhook?group=<slug>
+# The only endpoint:
+#   POST /api/method/notifire.api.webhook?group=<bench group name>
+#   Header: X-Webhook-Secret: <group token or global secret>
 #
-# notifire/api.py is a thin shim over notifire/notifire/api.py so the short
-# path above is the one senders are configured with; the fully qualified
-# notifire.notifire.api.webhook keeps working as well.
-#
-# No scheduler events and no doc_events: everything happens inside the
-# webhook request, so a plain `bench serve` (or a normal production bench)
-# handles the whole flow. Emails are sent synchronously (now=True) so the
-# Notifire Log status always reflects the real delivery attempt.
+# No scheduler, no doc_events, no background workers: mail is sent inside the
+# request (now=True) so the log status is always a real delivery result.

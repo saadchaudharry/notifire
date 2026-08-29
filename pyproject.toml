@@ -1,7 +1,7 @@
 [project]
 name = "notifire"
 authors = [{ name = "Notifire", email = "support@example.com" }]
-description = "Frappe Cloud webhook receiver + notification routing as a custom Frappe app (DocTypes + Desk UI)"
+description = "Frappe Cloud webhook receiver: email site, bench and deploy events to the right people"
 requires-python = ">=3.10"
 readme = "README.md"
 dynamic = ["version"]

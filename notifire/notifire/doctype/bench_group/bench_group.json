@@ -1,0 +1,88 @@
+{
+ "actions": [],
+ "autoname": "prompt",
+ "creation": "2026-08-29 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "column_break_top",
+  "webhook_url",
+  "token",
+  "section_hostnames",
+  "hostnames"
+ ],
+ "fields": [
+  {
+   "default": "1",
+   "description": "Disabled groups reject every webhook.",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "column_break_top",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Paste this into the Frappe Cloud webhook form (Developer Settings > Add Webhook).",
+   "fieldname": "webhook_url",
+   "fieldtype": "Small Text",
+   "label": "Webhook URL",
+   "read_only": 1
+  },
+  {
+   "description": "Frappe Cloud sends this back in the X-Webhook-Secret header. Generated automatically.",
+   "fieldname": "token",
+   "fieldtype": "Data",
+   "label": "Token",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_hostnames",
+   "fieldtype": "Section Break",
+   "label": "Site Hostnames"
+  },
+  {
+   "description": "Every Frappe Cloud site under this bench group, e.g. test465.frappe.cloud. Recipients pick from this list.",
+   "fieldname": "hostnames",
+   "fieldtype": "Table",
+   "label": "Hostnames",
+   "options": "Bench Group Hostname"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [
+  {
+   "group": "Activity",
+   "link_doctype": "Notifire Log",
+   "link_fieldname": "group"
+  }
+ ],
+ "modified": "2026-08-29 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Notifire",
+ "name": "Bench Group",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

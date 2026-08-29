@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\": \"nf_header\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Notifire</b></span>\", \"col\": 12}}, {\"id\": \"nf_intro\", \"type\": \"paragraph\", \"data\": {\"text\": \"Frappe Cloud webhooks in, email out. A <b>group</b> is one webhook endpoint, a <b>hostname</b> routes a site to a group, and a <b>recipient</b> is an address that receives that group's events.\", \"col\": 12}}, {\"id\": \"nf_sc_groups\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Notification Groups\", \"col\": 3}}, {\"id\": \"nf_sc_sites\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Site Hostnames\", \"col\": 3}}, {\"id\": \"nf_sc_recipients\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Recipients\", \"col\": 3}}, {\"id\": \"nf_sc_failed\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Failed Events\", \"col\": 3}}, {\"id\": \"nf_spacer_1\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"nf_card_setup\", \"type\": \"card\", \"data\": {\"card_name\": \"Set Up Routing\", \"col\": 4}}, {\"id\": \"nf_card_monitor\", \"type\": \"card\", \"data\": {\"card_name\": \"Monitor\", \"col\": 4}}, {\"id\": \"nf_card_config\", \"type\": \"card\", \"data\": {\"card_name\": \"Configure\", \"col\": 4}}, {\"id\": \"nf_spacer_2\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"nf_steps\", \"type\": \"paragraph\", \"data\": {\"text\": \"<b>First run</b> &nbsp;1. Set up a default outgoing Email Account on this site. &nbsp;2. Create a notification group. &nbsp;3. Map your site hostnames to it. &nbsp;4. Add at least one recipient. &nbsp;5. Copy the webhook URL and secret from the group form into each monitored site's webhook settings, then send a <i>Webhook Validate</i> event to confirm the wiring.\", \"col\": 12}}]",
+ "content": "[{\"id\": \"nf_h\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Notifire</b></span>\", \"col\": 12}}, {\"id\": \"nf_p\", \"type\": \"paragraph\", \"data\": {\"text\": \"A <b>Bench Group</b> is one Frappe Cloud webhook (URL + token + its site hostnames). A <b>Recipient</b> is an email address, optionally limited to some of those hostnames. Leave a recipient's hostname list empty and it gets everything, including bench and deploy events.\", \"col\": 12}}, {\"id\": \"nf_s1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Bench Groups\", \"col\": 3}}, {\"id\": \"nf_s2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Recipients\", \"col\": 3}}, {\"id\": \"nf_s3\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Logs\", \"col\": 3}}, {\"id\": \"nf_s4\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Failed\", \"col\": 3}}, {\"id\": \"nf_sp\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"nf_c1\", \"type\": \"card\", \"data\": {\"card_name\": \"Notifire\", \"col\": 4}}]",
  "creation": "2026-08-29 00:00:00.000000",
  "custom_blocks": [],
  "docstatus": 0,
@@ -15,8 +15,8 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Set Up Routing",
-   "link_count": 3,
+   "label": "Notifire",
+   "link_count": 4,
    "onboard": 0,
    "type": "Card Break"
   },
@@ -24,20 +24,9 @@
    "dependencies": "",
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Notifire Group",
+   "label": "Bench Group",
    "link_count": 0,
-   "link_to": "Notifire Group",
-   "link_type": "DocType",
-   "onboard": 1,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Notifire Site",
-   "link_count": 0,
-   "link_to": "Notifire Site",
+   "link_to": "Bench Group",
    "link_type": "DocType",
    "onboard": 1,
    "type": "Link"
@@ -54,14 +43,6 @@
    "type": "Link"
   },
   {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Monitor",
-   "link_count": 1,
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
    "dependencies": "",
    "hidden": 0,
    "is_query_report": 0,
@@ -73,31 +54,12 @@
    "type": "Link"
   },
   {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Configure",
-   "link_count": 2,
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
    "dependencies": "",
    "hidden": 0,
    "is_query_report": 0,
    "label": "Notifire Settings",
    "link_count": 0,
    "link_to": "Notifire Settings",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Email Account",
-   "link_count": 0,
-   "link_to": "Email Account",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -118,15 +80,8 @@
   {
    "color": "Blue",
    "doc_view": "List",
-   "label": "Notification Groups",
-   "link_to": "Notifire Group",
-   "type": "DocType"
-  },
-  {
-   "color": "Blue",
-   "doc_view": "List",
-   "label": "Site Hostnames",
-   "link_to": "Notifire Site",
+   "label": "Bench Groups",
+   "link_to": "Bench Group",
    "type": "DocType"
   },
   {
@@ -137,10 +92,17 @@
    "type": "DocType"
   },
   {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Logs",
+   "link_to": "Notifire Log",
+   "type": "DocType"
+  },
+  {
    "color": "Red",
    "doc_view": "List",
    "format": "{} Failed",
-   "label": "Failed Events",
+   "label": "Failed",
    "link_to": "Notifire Log",
    "stats_filter": "{\"status\":\"Failed\"}",
    "type": "DocType"

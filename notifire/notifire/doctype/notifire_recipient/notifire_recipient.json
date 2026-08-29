@@ -1,48 +1,33 @@
 {
  "actions": [],
- "autoname": "hash",
+ "autoname": "field:email",
  "creation": "2026-08-29 00:00:00.000000",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "group",
   "email",
-  "column_break_basic",
+  "column_break_top",
   "enabled",
-  "section_scope",
-  "scope_mode",
-  "applies_to",
-  "section_coverage",
-  "coverage_html"
+  "section_hostnames",
+  "hostnames"
  ],
  "fields": [
   {
-   "description": "The endpoint whose events this address can receive.",
-   "fieldname": "group",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Notification Group",
-   "options": "Notifire Group",
-   "reqd": 1
-  },
-  {
-   "description": "One row per address per group. To change which sites an existing address covers, edit that row instead of adding a second one.",
    "fieldname": "email",
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Email",
    "options": "Email",
-   "reqd": 1
+   "reqd": 1,
+   "unique": 1
   },
   {
-   "fieldname": "column_break_basic",
+   "fieldname": "column_break_top",
    "fieldtype": "Column Break"
   },
   {
    "default": "1",
-   "description": "Disabled addresses are skipped when recipients are resolved.",
    "fieldname": "enabled",
    "fieldtype": "Check",
    "in_list_view": 1,
@@ -50,39 +35,16 @@
    "label": "Enabled"
   },
   {
-   "fieldname": "section_scope",
+   "fieldname": "section_hostnames",
    "fieldtype": "Section Break",
-   "label": "Which Sites"
+   "label": "Hostnames"
   },
   {
-   "default": "All sites in this group",
-   "description": "A site that has its own selected recipients uses only those; the group defaults are skipped for that site.",
-   "fieldname": "scope_mode",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Receives events for",
-   "options": "All sites in this group\nOnly selected sites",
-   "reqd": 1
-  },
-  {
-   "depends_on": "eval:doc.scope_mode==\"Only selected sites\"",
-   "description": "Pick from the hostnames mapped to this group.",
-   "fieldname": "applies_to",
-   "fieldtype": "Table MultiSelect",
-   "label": "Selected Sites",
-   "mandatory_depends_on": "eval:doc.scope_mode==\"Only selected sites\"",
-   "options": "Notifire Recipient Scope"
-  },
-  {
-   "fieldname": "section_coverage",
-   "fieldtype": "Section Break",
-   "label": "Coverage"
-  },
-  {
-   "fieldname": "coverage_html",
-   "fieldtype": "HTML",
-   "label": "Coverage"
+   "description": "Which sites this address gets mail for. Leave empty to receive everything, including bench and deploy events (those carry no site).",
+   "fieldname": "hostnames",
+   "fieldtype": "Table",
+   "label": "Hostnames",
+   "options": "Notifire Recipient Hostname"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -107,11 +69,8 @@
   }
  ],
  "quick_entry": 1,
- "search_fields": "email,group",
- "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "title_field": "email",
  "track_changes": 1
 }

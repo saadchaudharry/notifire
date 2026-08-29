@@ -8,15 +8,12 @@
   "status",
   "event",
   "site",
-  "column_break_head",
-  "ref_name",
+  "column_break_top",
+  "reference",
   "group",
-  "via_fallback",
+  "recipients",
   "section_detail",
-  "sent_to",
-  "column_break_detail",
   "error",
-  "section_payload",
   "payload"
  ],
  "fields": [
@@ -47,12 +44,12 @@
    "read_only": 1
   },
   {
-   "fieldname": "column_break_head",
+   "fieldname": "column_break_top",
    "fieldtype": "Column Break"
   },
   {
-   "description": "The site hostname or object name (bench/deploy) the event refers to.",
-   "fieldname": "ref_name",
+   "description": "Site hostname, or the bench/deploy object name for events that carry no site.",
+   "fieldname": "reference",
    "fieldtype": "Data",
    "label": "Reference",
    "read_only": 1
@@ -61,45 +58,26 @@
    "fieldname": "group",
    "fieldtype": "Link",
    "in_standard_filter": 1,
-   "label": "Group",
-   "options": "Notifire Group",
+   "label": "Bench Group",
+   "options": "Bench Group",
    "read_only": 1
   },
   {
-   "default": "0",
-   "description": "Set when the event matched no hostname and was routed to the fallback group.",
-   "fieldname": "via_fallback",
-   "fieldtype": "Check",
-   "in_standard_filter": 1,
-   "label": "Via Fallback",
-   "read_only": 1
-  },
-  {
-   "fieldname": "section_detail",
-   "fieldtype": "Section Break",
-   "label": "Notification"
-  },
-  {
-   "fieldname": "sent_to",
+   "fieldname": "recipients",
    "fieldtype": "Small Text",
    "label": "Sent To",
    "read_only": 1
   },
   {
-   "fieldname": "column_break_detail",
-   "fieldtype": "Column Break"
+   "fieldname": "section_detail",
+   "fieldtype": "Section Break",
+   "label": "Details"
   },
   {
-   "description": "Failure reason or processing note. Never contains secrets.",
    "fieldname": "error",
    "fieldtype": "Small Text",
    "label": "Note / Error",
    "read_only": 1
-  },
-  {
-   "fieldname": "section_payload",
-   "fieldtype": "Section Break",
-   "label": "Webhook Payload"
   },
   {
    "fieldname": "payload",
@@ -118,17 +96,13 @@
  "owner": "Administrator",
  "permissions": [
   {
-   "create": 1,
    "delete": 1,
    "export": 1,
    "read": 1,
    "report": 1,
-   "role": "System Manager",
-   "write": 1
+   "role": "System Manager"
   }
  ],
- "search_fields": "event,site,status",
- "show_title_field_in_link": 1,
  "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
