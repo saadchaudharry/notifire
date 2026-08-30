@@ -28,14 +28,16 @@ bench --site <site> migrate
 1. Make sure the site has a default outgoing **Email Account**.
 2. Create a **Bench Group** named after your Frappe Cloud bench group, and list its site hostnames.
 3. Add **Recipients**. Leave the hostname table empty for someone who should get everything.
-4. In Frappe Cloud → Developer Settings → Add Webhook, paste the **Webhook URL** and the **Token** (as the secret), pick your events, then press **Validate Webhook** and **Activate**.
+4. In Frappe Cloud → Developer Settings → Add Webhook, paste the **Webhook URL** and the group's **Token** into Secret, pick your events, then press **Validate Webhook** and **Activate**.
+
+The URL is the same for every group — Frappe Cloud rejects an endpoint containing `?`, so the group cannot be named in the URL. The **token is the identifier**: it is looked up by SHA-256 fingerprint on an indexed column, so one webhook per bench group, each with its own secret.
 
 The `Webhook Validate` event answers `OK` and is logged without emailing anyone, so validation never spams your team.
 
 Test it by hand:
 
 ```bash
-curl -X POST "https://<site>/api/method/notifire.api.webhook?group=bench-0019" \
+curl -X POST "https://<site>/api/method/notifire.api.webhook" \
      -H "X-Webhook-Secret: <token>" \
      -H "Content-Type: application/json" \
      -d '{"event": "Webhook Validate", "data": {}}'
@@ -55,11 +57,13 @@ A flapping site cycling Active → Broken → Active fires one webhook per trans
 
 ## Auth
 
-`X-Webhook-Secret` is compared in constant time against the group's token. An unknown group and a wrong token take the same path and both return `401`.
+`X-Webhook-Secret` is hashed and looked up on an indexed column, then confirmed in constant time against the stored token. Any secret, valid or not, costs the same one query. A group with no matching token falls through to the global secret check and otherwise gets `401`.
 
-A token proves *which group is calling*, not which site it may speak for, so **Strict Site Binding** (on by default) additionally requires the payload's site to be listed on that group. Without it, any group's token could forge an alert for another customer's site and reach the recipients scoped to it. If you add sites in Frappe Cloud faster than you list them here, turn it off — the events then go through and the log says which site was unlisted.
+A token proves *which group is calling*, not which site it may speak for, so **Strict Site Binding** (on by default) additionally requires the payload's site to be listed on that group. Hostnames are unique across groups, which is what makes that check mean anything: a group cannot claim a hostname another group already lists. Without it, any group's token could forge an alert for another customer's site and reach the recipients scoped to it. If you add sites in Frappe Cloud faster than you list them here, turn it off — the events then go through and the log says which site was unlisted.
 
 The **global secret** is a master token accepted by every group. It is **off by default**: one leaked value would forge events for every group. Turn on *Allow Global Secret* only if you need it. Both secrets are `Password` fields, so they are encrypted at rest and appear as asterisks in version history; read them with **Copy Token** / **Show Global Secret**, rotate them with the neighbouring button.
+
+Rejected requests are logged (and committed) before the 401 goes out, so attempts show up in Notifire Log rather than vanishing with the rollback.
 
 Payloads carrying their own `timestamp` are rejected if it is more than 24 hours old. That is a weak replay guard, but Frappe Cloud only sends a static shared secret, so it is the only freshness signal available.
 

@@ -65,7 +65,7 @@ def make_recipient(email, hostnames=None):
     }).insert()
 
 
-def call(group, payload, secret):
+def call(payload, secret):
     """Drive the endpoint the way a real request does."""
     body = json.dumps(payload)
     frappe.local.request = frappe._dict(
@@ -74,7 +74,7 @@ def call(group, payload, secret):
         get_data=lambda as_text=True: body,
     )
     # bypass the rate-limit wrapper: it needs redis and a request ip
-    return getattr(api.webhook, "__wrapped__", api.webhook)(group=group)
+    return getattr(api.webhook, "__wrapped__", api.webhook)()
 
 
 def token_of(group):
@@ -82,17 +82,39 @@ def token_of(group):
 
 
 class TestNotifire(FrappeTestCase):
+    def tearDown(self):
+        # FrappeTestCase rolls the database back, but the Single is cached and
+        # frappe.local.request is a fake this module installed.
+        frappe.clear_cache(doctype="Notifire Settings")
+        frappe.local.request = None
+        super().tearDown()
+
     def test_url_and_token_are_generated(self):
         group = make_group()
-        self.assertTrue(group.webhook_url.endswith("/api/method/notifire.api.webhook?group=bench-0019"))
+        # Frappe Cloud rejects an endpoint URL with a query string
+        self.assertTrue(group.webhook_url.endswith("/api/method/notifire.api.webhook"))
+        self.assertNotIn("?", group.webhook_url)
         self.assertEqual(len(token_of(group)), 48)
+
+    def test_token_identifies_the_group(self):
+        first = make_group("bench-0019", ["test465.frappe.cloud"])
+        second = make_group("bench-0042", ["other.frappe.cloud"])
+        make_recipient("ops@example.com")
+
+        with mock.patch("frappe.sendmail"):
+            call({"event": "Site Plan Change", "data": {"site": "other.frappe.cloud"}}, token_of(second))
+        log = frappe.get_all(
+            "Notifire Log", filters={"site": "other.frappe.cloud"}, fields=["group"]
+        )[0]
+        self.assertEqual(log.group, second.name)
+        self.assertNotEqual(log.group, first.name)
 
     def test_bad_token_is_rejected(self):
         group = make_group()
         with self.assertRaises(frappe.AuthenticationError):
-            call(group.name, PLAN_CHANGE, "wrong")
+            call(PLAN_CHANGE, "wrong")
         with self.assertRaises(frappe.AuthenticationError):
-            call("no-such-group", PLAN_CHANGE, token_of(group))
+            call(PLAN_CHANGE, "also-wrong")
 
     def test_global_secret_also_works(self):
         group = make_group()
@@ -103,13 +125,13 @@ class TestNotifire(FrappeTestCase):
         frappe.clear_cache(doctype="Notifire Settings")
         make_recipient("ops@example.com")
         with mock.patch("frappe.sendmail"):
-            self.assertEqual(call(group.name, PLAN_CHANGE, "master-key"), "OK")
+            self.assertEqual(call(PLAN_CHANGE, "master-key"), "OK")
 
     def test_validate_event_sends_no_email(self):
         group = make_group()
         make_recipient("ops@example.com")
         with mock.patch("frappe.sendmail") as send:
-            self.assertEqual(call(group.name, {"event": "Webhook Validate", "data": {}}, token_of(group)), "OK")
+            self.assertEqual(call({"event": "Webhook Validate", "data": {}}, token_of(group)), "OK")
         send.assert_not_called()
 
     def test_site_extraction_ignores_bench_ids(self):
@@ -145,7 +167,7 @@ class TestNotifire(FrappeTestCase):
         group = make_group()
         make_recipient("ops@example.com")
         with mock.patch("frappe.sendmail") as send:
-            call(group.name, PLAN_CHANGE, token_of(group))
+            call(PLAN_CHANGE, token_of(group))
 
         kwargs = send.call_args.kwargs
         self.assertEqual(kwargs["recipients"], ["ops@example.com"])
@@ -162,7 +184,7 @@ class TestNotifire(FrappeTestCase):
         group = make_group()
         make_recipient("ops@example.com")
         with mock.patch("frappe.sendmail") as send:
-            call(group.name, BENCH_STATUS, token_of(group))
+            call(BENCH_STATUS, token_of(group))
         self.assertEqual(send.call_args.kwargs["recipients"], ["ops@example.com"])
         log = frappe.get_all(
             "Notifire Log", filters={"event": "Bench Status Update"}, fields=["site", "reference"]
@@ -173,7 +195,7 @@ class TestNotifire(FrappeTestCase):
     def test_no_recipients_is_logged_as_failed(self):
         group = make_group()
         with mock.patch("frappe.sendmail") as send:
-            call(group.name, PLAN_CHANGE, token_of(group))
+            call(PLAN_CHANGE, token_of(group))
         send.assert_not_called()
         log = frappe.get_all("Notifire Log", filters={"status": "Failed"}, fields=["error"])[0]
         self.assertIn("No recipient", log.error)
@@ -182,8 +204,8 @@ class TestNotifire(FrappeTestCase):
         group = make_group()
         make_recipient("ops@example.com")
         with mock.patch("frappe.sendmail") as send:
-            call(group.name, SITE_STATUS, token_of(group))
-            call(group.name, SITE_STATUS, token_of(group))
+            call(SITE_STATUS, token_of(group))
+            call(SITE_STATUS, token_of(group))
         send.assert_called_once()
         self.assertEqual(frappe.db.count("Notifire Log", {"status": "Suppressed"}), 1)
 
@@ -196,8 +218,8 @@ class TestNotifire(FrappeTestCase):
         group = make_group()
         make_recipient("ops@example.com")
         with mock.patch("frappe.sendmail") as send:
-            call(group.name, SITE_STATUS, token_of(group))
-            call(group.name, SITE_STATUS, token_of(group))
+            call(SITE_STATUS, token_of(group))
+            call(SITE_STATUS, token_of(group))
         self.assertEqual(send.call_count, 2)
 
     def test_site_must_belong_to_the_calling_group(self):
@@ -208,7 +230,7 @@ class TestNotifire(FrappeTestCase):
 
         with mock.patch("frappe.sendmail") as send:
             with self.assertRaises(frappe.AuthenticationError):
-                call(group.name, forged, token_of(group))
+                call(forged, token_of(group))
         send.assert_not_called()
         log = frappe.get_all(
             "Notifire Log", filters={"site": "othercustomer.frappe.cloud"}, fields=["status", "error"]
@@ -225,18 +247,32 @@ class TestNotifire(FrappeTestCase):
         group = make_group("bench-0019", ["test465.frappe.cloud"])
         make_recipient("ops@example.com")
         with mock.patch("frappe.sendmail") as send:
-            call(group.name, {"event": "Site Plan Change", "data": {"site": "other.frappe.cloud"}}, token_of(group))
+            call({"event": "Site Plan Change", "data": {"site": "other.frappe.cloud"}}, token_of(group))
         send.assert_called_once()
 
-    def test_payload_values_are_escaped_in_the_email(self):
-        rows = utils.build_rows(
-            "Site Status Update",
-            "test465.frappe.cloud",
-            {"status": "<a href='https://evil.example'>Restore</a>"},
-        )
-        rendered = dict(rows)
-        self.assertNotIn("<a href", rendered["Status"])
-        self.assertIn("&lt;a", rendered["Status"])
+    def test_payload_html_is_escaped_but_text_part_stays_raw(self):
+        group = make_group()
+        make_recipient("ops@example.com")
+        payload = {
+            "event": "Site Status Update",
+            "data": {
+                "host_name": "test465.frappe.cloud",
+                "status": "<a href='https://evil.example'>Restore your site</a>",
+            },
+        }
+        with mock.patch("frappe.sendmail") as send:
+            call(payload, token_of(group))
+
+        kwargs = send.call_args.kwargs
+        self.assertNotIn("<a href", kwargs["message"])
+        self.assertIn("&lt;a href", kwargs["message"])
+        # the plain-text alternative must not read "&lt;a href"
+        self.assertIn("<a href", kwargs["text_content"])
+
+    def test_hostname_cannot_be_claimed_by_two_groups(self):
+        make_group("bench-0019", ["shared.frappe.cloud"])
+        with self.assertRaises(frappe.ValidationError):
+            make_group("bench-0042", ["shared.frappe.cloud"])
 
     def test_stale_event_is_rejected(self):
         group = make_group()
@@ -245,7 +281,7 @@ class TestNotifire(FrappeTestCase):
             "data": {"site": "test465.frappe.cloud", "timestamp": "2020-01-01 00:00:00"},
         }
         with self.assertRaises(frappe.ValidationError):
-            call(group.name, old, token_of(group))
+            call(old, token_of(group))
 
     def test_global_secret_is_off_by_default(self):
         group = make_group()
@@ -255,10 +291,10 @@ class TestNotifire(FrappeTestCase):
         settings.save()
         frappe.clear_cache(doctype="Notifire Settings")
         with self.assertRaises(frappe.AuthenticationError):
-            call(group.name, PLAN_CHANGE, "master-key")
+            call(PLAN_CHANGE, "master-key")
 
     def test_bad_payload_is_rejected(self):
         group = make_group()
         for body in ({"data": {}}, {"event": "  "}):
             with self.assertRaises(frappe.ValidationError):
-                call(group.name, body, token_of(group))
+                call(body, token_of(group))

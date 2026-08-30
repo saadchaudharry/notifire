@@ -182,10 +182,10 @@ def find_recipients(site):
 
 
 def build_rows(event, site, data):
-    """Escaped (label, value) lines for the email.
+    """Raw (label, value) lines for the email.
 
-    Everything here comes from an external payload and Frappe's Jinja
-    environment does not autoescape, so escaping happens at the source.
+    Values are escaped by the caller when they go into HTML. The plain-text
+    part must keep them raw, or the mail reads "&lt;p&gt;".
     """
     rows = [("Event", event)]
     if site:
@@ -201,7 +201,7 @@ def build_rows(event, site, data):
             continue
         rows.append((label, str(value)))
 
-    return [(escape_html(str(label)), escape_html(str(value))) for label, value in rows]
+    return [(str(label), str(value)) for label, value in rows]
 
 
 def send_email(event, site, payload, recipients, log_name=None):
@@ -221,13 +221,16 @@ def send_email(event, site, payload, recipients, log_name=None):
     subject = re.sub(r"[\r\n]+", " ", subject)[:200]
 
     rows = build_rows(event, site, data)
+    # Frappe's Jinja environment does not autoescape and every value here came
+    # from an external payload, so escape on the way into the HTML part only.
+    html_rows = [(escape_html(l), escape_html(v)) for l, v in rows]
     try:
         frappe.sendmail(
             recipients=recipients,
             sender=conf.from_email or "",
             subject=subject,
             message=frappe.render_template(
-                EMAIL_HTML, {"event": escape_html(event), "ball": ball, "rows": rows}
+                EMAIL_HTML, {"event": escape_html(event), "ball": ball, "rows": html_rows}
             ),
             text_content="\n".join("{}: {}".format(l, v) for l, v in rows),
             reference_doctype="Notifire Log",

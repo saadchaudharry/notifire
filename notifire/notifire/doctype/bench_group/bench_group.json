@@ -11,7 +11,8 @@
   "webhook_url",
   "token",
   "section_hostnames",
-  "hostnames"
+  "hostnames",
+  "token_hash"
  ],
  "fields": [
   {
@@ -53,6 +54,16 @@
    "fieldtype": "Table",
    "label": "Hostnames",
    "options": "Bench Group Hostname"
+  },
+  {
+   "description": "SHA-256 of the token. Frappe Cloud rejects query parameters in the endpoint URL, so the token itself identifies the group; this is the indexed lookup key.",
+   "fieldname": "token_hash",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Token Hash",
+   "no_copy": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
