@@ -10,6 +10,37 @@ The receiver is guest-accessible by design (webhook senders are not Desk
 users); every request is authenticated manually with a constant-time secret
 comparison. Everything below the receiver is Desk-only and permission
 checked.
+External Frappe Cloud event
+          │
+          ▼
+POST /api/method/notifire.api.webhook?group=my-group
+          │
+          ▼
+Check X-Webhook-Secret
+          │
+          ├── invalid → Unauthorized
+          │
+          ▼
+Parse JSON payload
+          │
+          ├── invalid → Validation error
+          │
+          ▼
+Read "event"
+          │
+          ├── "Webhook Validate" → return "OK"
+          │
+          ▼
+process_webhook_event(...)
+          │
+          ▼
+Find recipients
+          │
+          ▼
+Send email
+          │
+          ▼
+Create notification/log
 """
 
 import re
