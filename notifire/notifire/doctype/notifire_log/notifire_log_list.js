@@ -5,7 +5,7 @@
 // evaluated when a form opens, so the list never picks them up.
 
 frappe.listview_settings["Notifire Log"] = {
-	add_fields: ["status", "site", "reference"],
+	add_fields: ["status", "site", "reference", "event_status"],
 	get_indicator(doc) {
 		const colors = { Sent: "green", Received: "orange", Failed: "red", Suppressed: "blue" };
 		const status = doc.status || "Received";

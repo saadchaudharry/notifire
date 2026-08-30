@@ -11,24 +11,20 @@ const NOTIFIRE_RED = new Set([
 	"offline", "suspended", "deleted", "cancelled", "canceled", "unreachable",
 ]);
 
+function notifire_ball(status) {
+	const value = String(status || "").trim().toLowerCase();
+	if (!value) return "";
+	if (NOTIFIRE_GREEN.has(value)) return "\u{1F7E2}";
+	if (NOTIFIRE_RED.has(value)) return "\u{1F534}";
+	return "\u{1F7E1}";
+}
+
 frappe.ui.form.on("Notifire Log", {
 	refresh(frm) {
-		let status = null;
-		try {
-			const payload =
-				typeof frm.doc.payload === "string" ? JSON.parse(frm.doc.payload) : frm.doc.payload || {};
-			status = payload.data ? payload.data.status : null;
-		} catch (e) {
-			// payload is not valid JSON, nothing to show
-		}
-		if (!status) return;
-
-		const value = String(status).trim().toLowerCase();
-		const ball = NOTIFIRE_GREEN.has(value)
-			? "\u{1F7E2}"
-			: NOTIFIRE_RED.has(value)
-			? "\u{1F534}"
-			: "\u{1F7E1}";
-		frm.dashboard.set_headline(`${ball} ${frappe.utils.escape_html(String(status))}`);
+		const ball = notifire_ball(frm.doc.event_status);
+		if (!ball) return;
+		const bits = [`${ball} ${frappe.utils.escape_html(frm.doc.event_status)}`];
+		if (frm.doc.reference) bits.push(frappe.utils.escape_html(frm.doc.reference));
+		frm.dashboard.set_headline(bits.join(" &nbsp;·&nbsp; "));
 	},
 });

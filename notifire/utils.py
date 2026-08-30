@@ -39,6 +39,7 @@ BALL_RED = "\U0001F534"
 # out until someone puts it here on purpose. Order is display order.
 EMAIL_FIELDS = [
     ("status", "Status"),
+    ("deploy_candidate", "Deploy Candidate"),
     ("type", "Type"),
     ("plan", "Plan"),
     ("cluster", "Cluster"),
@@ -116,6 +117,22 @@ def valid_secret(provided, *expected):
     return ok
 
 
+def event_reference(site, data):
+    """What the event is about, for logs, subjects and dedupe.
+
+    Site events use the hostname. Bench and deploy events have none, and the
+    live payload's `name` is an opaque hash ("6p4ajiomvd"), so prefer the
+    readable ids Frappe Cloud sends alongside it.
+    """
+    if site:
+        return site
+    for key in ("deploy_candidate", "name", "group"):
+        value = data.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
 def extract_site(payload):
     """The site hostname in a payload, or None for bench/deploy events.
 
@@ -149,12 +166,31 @@ def is_stale(payload):
     return sent < cutoff
 
 
-def find_recipients(site):
-    """Enabled recipients for a hostname, in two queries.
+def group_hostnames(group):
+    if not group:
+        return set()
+    return {
+        (h or "").strip().lower()
+        for h in frappe.get_all(
+            "Bench Group Hostname",
+            filters={"parent": group, "parenttype": "Bench Group"},
+            pluck="hostname",
+        )
+    }
 
-    A recipient with no hostnames listed gets everything - that is also who
-    receives bench and deploy events, which have no site at all.
+
+def find_recipients(site, group=None):
+    """Enabled recipients for an event, in two queries.
+
+    With a site, a recipient matches if it lists that hostname. Bench and
+    deploy events carry no site, so they fall back to the group that owns the
+    token: anyone scoped to a hostname in that group gets its build and bench
+    events too. Otherwise "list your sites" would silently mean "never hear
+    about your own deploys".
+
+    A recipient with no hostnames listed always matches.
     """
+    scope = group_hostnames(group) if not site else None
     rows = frappe.get_all(
         "Notifire Recipient", filters={"enabled": 1}, fields=["name", "email"], order_by="creation asc"
     )
@@ -172,8 +208,13 @@ def find_recipients(site):
     emails, seen = [], set()
     for row in rows:
         hosts = scoped.get(row.name)
-        if hosts and not (site and site in hosts):
-            continue
+        if hosts:
+            if site:
+                matches = site in hosts
+            else:
+                matches = bool(scope and hosts & scope)
+            if not matches:
+                continue
         key = (row.email or "").strip().lower()
         if key and key not in seen:
             seen.add(key)
@@ -182,18 +223,16 @@ def find_recipients(site):
 
 
 def build_rows(event, site, data):
-    """Raw (label, value) lines for the email.
-
-    Values are escaped by the caller when they go into HTML. The plain-text
-    part must keep them raw, or the mail reads "&lt;p&gt;".
-    """
+    """Raw (label, value) lines for the email. The caller escapes them."""
     rows = [("Event", event)]
     if site:
         rows.append(("Site", site))
     if data.get("from_plan") or data.get("to_plan"):
         rows.append(("Change", "{} \u2192 {}".format(data.get("from_plan", "?"), data.get("to_plan", "?"))))
-    if data.get("name") and not site:
-        rows.append(("Reference", str(data["name"])))
+    if not site:
+        reference = event_reference(site, data)
+        if reference:
+            rows.append(("Reference", reference))
 
     for key, label in EMAIL_FIELDS:
         value = data.get(key)
@@ -208,7 +247,7 @@ def send_email(event, site, payload, recipients, log_name=None):
     """Send one notification. Returns (ok, error)."""
     conf = settings()
     data = payload_data(payload)
-    ref = site or data.get("name") or ""
+    ref = event_reference(site, data)
     ball = status_ball(data.get("status"))
 
     # Subject is plain text, so it is not escaped - but it must not carry
@@ -220,19 +259,20 @@ def send_email(event, site, payload, recipients, log_name=None):
         subject = "{} {}".format(ball, subject)
     subject = re.sub(r"[\r\n]+", " ", subject)[:200]
 
-    rows = build_rows(event, site, data)
     # Frappe's Jinja environment does not autoescape and every value here came
-    # from an external payload, so escape on the way into the HTML part only.
-    html_rows = [(escape_html(l), escape_html(v)) for l, v in rows]
+    # from an external payload, so escape on the way into the template.
+    rows = [(escape_html(l), escape_html(v)) for l, v in build_rows(event, site, data)]
     try:
+        # No text_content: that is a parameter of the email queue, not of
+        # frappe.sendmail. Frappe derives the plain-text alternative from the
+        # HTML itself.
         frappe.sendmail(
             recipients=recipients,
             sender=conf.from_email or "",
             subject=subject,
             message=frappe.render_template(
-                EMAIL_HTML, {"event": escape_html(event), "ball": ball, "rows": html_rows}
+                EMAIL_HTML, {"event": escape_html(event), "ball": ball, "rows": rows}
             ),
-            text_content="\n".join("{}: {}".format(l, v) for l, v in rows),
             reference_doctype="Notifire Log",
             reference_name=log_name,
             now=not frappe.utils.cint(conf.queue_emails),
@@ -247,8 +287,9 @@ def create_log(event, site, payload, group, recipients, status, error=""):
     return frappe.get_doc({
         "doctype": "Notifire Log",
         "event": event,
+        "event_status": str(data.get("status") or ""),
         "site": site or "",
-        "reference": site or data.get("name") or "",
+        "reference": event_reference(site, data),
         "group": group or "",
         "recipients": ", ".join(recipients or []),
         "status": status,
@@ -257,7 +298,7 @@ def create_log(event, site, payload, group, recipients, status, error=""):
     }).insert(ignore_permissions=True)
 
 
-def is_duplicate(event, site, reference, minutes):
+def is_duplicate(event, site, reference, event_status, minutes):
     """True when the same event for the same site was emailed just now.
 
     A flapping site cycling Active -> Broken -> Active sends one webhook per
@@ -271,6 +312,10 @@ def is_duplicate(event, site, reference, minutes):
         return False
     filters = {
         "event": event,
+        # A build walking Pending -> Preparing -> Running is four different
+        # events, not one repeated four times. Only an identical status is a
+        # duplicate.
+        "event_status": event_status or "",
         "status": "Sent",
         "creation": (">", frappe.utils.add_to_date(frappe.utils.now_datetime(), minutes=-minutes)),
         "site": site or "",
@@ -285,8 +330,8 @@ def process_event(event, payload, group=None):
     conf = settings()
     data = payload_data(payload)
     site = extract_site(payload)
-    reference = site or data.get("name") or ""
-    recipients = find_recipients(site)
+    reference = event_reference(site, data)
+    recipients = find_recipients(site, group)
 
     log = create_log(event, site, payload, group, recipients, "Received")
 
@@ -300,7 +345,9 @@ def process_event(event, payload, group=None):
     if not recipients:
         return finish("Failed", "No recipient matches this event")
 
-    if is_duplicate(event, site, reference, frappe.utils.cint(conf.dedupe_window_minutes)):
+    if is_duplicate(
+        event, site, reference, data.get("status"), frappe.utils.cint(conf.dedupe_window_minutes)
+    ):
         return finish(
             "Suppressed",
             "Same event already emailed within the last {} minutes".format(conf.dedupe_window_minutes),

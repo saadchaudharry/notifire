@@ -11,7 +11,10 @@ Frappe Cloud webhooks in, email out. Four DocTypes, one endpoint, no background 
 | **Notifire Log**    | Every request, with status, payload and the traffic-light ball.                                |
 | **Notifire Settings** | On/off, subject prefix, from address, dedupe window, global secret.                          |
 
-Routing is one rule: **a recipient with hostnames listed gets only those sites; a recipient with an empty list gets everything.** Bench and deploy events carry no site hostname, so the empty-list recipients are the ones who receive them.
+Routing:
+
+- **A recipient with an empty hostname list gets everything.**
+- **A recipient with hostnames listed** gets events for those sites — plus the bench and deploy events of the group those hostnames belong to. Those events carry no site of their own, so they fall back to the group whose token was used; otherwise listing your sites would quietly mean never hearing about your own deploys.
 
 ## Install
 
@@ -53,7 +56,7 @@ Mail goes out inside the webhook request (`now=True`), so the log status is a re
 
 ## Dedupe window
 
-A flapping site cycling Active → Broken → Active fires one webhook per transition. Within the window (default 10 minutes, `0` disables), repeats of the same event for the same site are logged **Suppressed** instead of emailed. Identity is event + site; site-less bench events use the object name, so two benches never suppress each other. The cutoff is computed in the site's timezone, which is what Frappe stores in `creation` — comparing against UTC would stretch or disable the window by your offset.
+A flapping site cycling Active → Broken → Active fires one webhook per transition. Within the window (default 10 minutes, `0` disables), repeats of the same event for the same site are logged **Suppressed** instead of emailed. Identity is event + status + site; site-less bench events use their reference instead of the site, so two benches never suppress each other. Status is part of it because a build walking Pending → Preparing → Running is four different events, not one repeated four times — only an identical status inside the window is a duplicate. The cutoff is computed in the site's timezone, which is what Frappe stores in `creation` — comparing against UTC would stretch or disable the window by your offset.
 
 ## Auth
 

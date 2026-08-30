@@ -43,9 +43,17 @@ BENCH_STATUS = {
         "cluster": "London",
     },
 }
+# The live payload, which differs from the docs: doctype is Deploy Candidate
+# Build, `name` is an opaque hash, and the readable id is deploy_candidate.
 DEPLOY_STATUS = {
     "event": "Bench Deploy Status Update",
-    "data": {"doctype": "Deploy Candidate", "name": "deploy-0019-000059", "status": "Success"},
+    "data": {
+        "doctype": "Deploy Candidate Build",
+        "name": "6p4ajiomvd",
+        "deploy_candidate": "deploy-6453-000675",
+        "group": "bench-6453",
+        "status": "Running",
+    },
 }
 
 
@@ -250,7 +258,24 @@ class TestNotifire(FrappeTestCase):
             call({"event": "Site Plan Change", "data": {"site": "other.frappe.cloud"}}, token_of(group))
         send.assert_called_once()
 
-    def test_payload_html_is_escaped_but_text_part_stays_raw(self):
+    def test_sendmail_is_called_with_arguments_it_accepts(self):
+        """Mocking frappe.sendmail hides a wrong kwarg until it hits production."""
+        import inspect
+
+        group = make_group()
+        make_recipient("ops@example.com")
+        with mock.patch("frappe.sendmail") as send:
+            call(PLAN_CHANGE, token_of(group))
+
+        accepted = inspect.signature(frappe.sendmail).parameters
+        takes_kwargs = any(p.kind == p.VAR_KEYWORD for p in accepted.values())
+        for name in send.call_args.kwargs:
+            self.assertTrue(
+                takes_kwargs or name in accepted,
+                "frappe.sendmail() does not accept {0}".format(name),
+            )
+
+    def test_payload_html_is_escaped(self):
         group = make_group()
         make_recipient("ops@example.com")
         payload = {
@@ -263,11 +288,9 @@ class TestNotifire(FrappeTestCase):
         with mock.patch("frappe.sendmail") as send:
             call(payload, token_of(group))
 
-        kwargs = send.call_args.kwargs
-        self.assertNotIn("<a href", kwargs["message"])
-        self.assertIn("&lt;a href", kwargs["message"])
-        # the plain-text alternative must not read "&lt;a href"
-        self.assertIn("<a href", kwargs["text_content"])
+        message = send.call_args.kwargs["message"]
+        self.assertNotIn("<a href", message)
+        self.assertIn("&lt;a href", message)
 
     def test_hostname_cannot_be_claimed_by_two_groups(self):
         make_group("bench-0019", ["shared.frappe.cloud"])
@@ -292,6 +315,52 @@ class TestNotifire(FrappeTestCase):
         frappe.clear_cache(doctype="Notifire Settings")
         with self.assertRaises(frappe.AuthenticationError):
             call(PLAN_CHANGE, "master-key")
+
+    def test_deploy_event_reaches_the_groups_scoped_recipients(self):
+        """A deploy event carries no site, but it belongs to the calling group."""
+        group = make_group("magicbus", ["test465.frappe.cloud"])
+        make_recipient("ops@example.com", ["test465.frappe.cloud"])
+
+        with mock.patch("frappe.sendmail") as send:
+            call(DEPLOY_STATUS, token_of(group))
+        self.assertEqual(send.call_args.kwargs["recipients"], ["ops@example.com"])
+
+        log = frappe.get_all(
+            "Notifire Log",
+            filters={"event": "Bench Deploy Status Update"},
+            fields=["status", "reference", "event_status"],
+        )[0]
+        self.assertEqual(log.status, "Sent")
+        # not the opaque hash from `name`
+        self.assertEqual(log.reference, "deploy-6453-000675")
+        self.assertEqual(log.event_status, "Running")
+
+    def test_deploy_event_skips_recipients_of_another_group(self):
+        make_group("magicbus", ["test465.frappe.cloud"])
+        other = make_group("bench-0042", ["other.frappe.cloud"])
+        make_recipient("ops@example.com", ["test465.frappe.cloud"])
+
+        with mock.patch("frappe.sendmail") as send:
+            call(DEPLOY_STATUS, token_of(other))
+        send.assert_not_called()
+
+    def test_build_progress_is_not_deduped_away(self):
+        group = make_group("magicbus", ["test465.frappe.cloud"])
+        make_recipient("ops@example.com")
+
+        def build(status):
+            payload = json.loads(json.dumps(DEPLOY_STATUS))
+            payload["data"]["status"] = status
+            return payload
+
+        with mock.patch("frappe.sendmail") as send:
+            call(build("Pending"), token_of(group))
+            call(build("Preparing"), token_of(group))
+            call(build("Running"), token_of(group))
+            call(build("Running"), token_of(group))  # a real repeat
+
+        self.assertEqual(send.call_count, 3)
+        self.assertEqual(frappe.db.count("Notifire Log", {"status": "Suppressed"}), 1)
 
     def test_bad_payload_is_rejected(self):
         group = make_group()
