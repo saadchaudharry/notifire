@@ -21,7 +21,7 @@ bench --site <site> install-app notifire
 bench --site <site> migrate
 ```
 
-`after_install` seeds Notifire Settings with a global secret and a 10-minute dedupe window.
+`after_install` seeds Notifire Settings with a global secret (disabled), strict site binding, and a 10-minute dedupe window. Logs are dropped after 30 days by Frappe's daily log clearing.
 
 ## Setup
 
@@ -45,13 +45,23 @@ curl -X POST "https://<site>/api/method/notifire.api.webhook?group=bench-0019" \
 
 Emails and the log form show a ball based on `data.status`: 🟢 for active/success/deployed, 🔴 for broken/failed/suspended, 🟡 for anything in progress or unrecognized (pending, installing, updating, …). Bench deploys run Draft → Scheduled → Pending → Preparing → Running → Success, so most of that chain is yellow until the end.
 
+## Email sending
+
+Mail goes out inside the webhook request (`now=True`), so the log status is a real delivery result. That holds the request open for the SMTP round trip, so a burst of webhooks occupies workers. Tick **Send Emails In Background** in Settings to hand mail to the queue instead — responses get fast, but you need workers running and "Sent" then means "queued".
+
 ## Dedupe window
 
-A flapping site cycling Active → Broken → Active fires one webhook per transition. Within the window (default 10 minutes, `0` disables), repeats of the same event for the same site are logged **Suppressed** instead of emailed. Identity is event + site; site-less bench events use the object name, so two benches never suppress each other.
+A flapping site cycling Active → Broken → Active fires one webhook per transition. Within the window (default 10 minutes, `0` disables), repeats of the same event for the same site are logged **Suppressed** instead of emailed. Identity is event + site; site-less bench events use the object name, so two benches never suppress each other. The cutoff is computed in the site's timezone, which is what Frappe stores in `creation` — comparing against UTC would stretch or disable the window by your offset.
 
 ## Auth
 
-`X-Webhook-Secret` is compared in constant time against the group's token or the global secret. An unknown group and a wrong token both return `401`, so group names cannot be probed. Rotate a token with **Regenerate Token** on the group form, then update it in Frappe Cloud.
+`X-Webhook-Secret` is compared in constant time against the group's token. An unknown group and a wrong token take the same path and both return `401`.
+
+A token proves *which group is calling*, not which site it may speak for, so **Strict Site Binding** (on by default) additionally requires the payload's site to be listed on that group. Without it, any group's token could forge an alert for another customer's site and reach the recipients scoped to it. If you add sites in Frappe Cloud faster than you list them here, turn it off — the events then go through and the log says which site was unlisted.
+
+The **global secret** is a master token accepted by every group. It is **off by default**: one leaked value would forge events for every group. Turn on *Allow Global Secret* only if you need it. Both secrets are `Password` fields, so they are encrypted at rest and appear as asterisks in version history; read them with **Copy Token** / **Show Global Secret**, rotate them with the neighbouring button.
+
+Payloads carrying their own `timestamp` are rejected if it is more than 24 hours old. That is a weak replay guard, but Frappe Cloud only sends a static shared secret, so it is the only freshness signal available.
 
 ## Tests
 
@@ -59,4 +69,4 @@ A flapping site cycling Active → Broken → Active fires one webhook per trans
 bench --site <site> run-tests --app notifire
 ```
 
-Covers URL/token generation, auth, site extraction against the real Frappe Cloud payloads (including bench and deploy ids that must not be read as hostnames), ball colours, recipient matching, dedupe, and log statuses.
+Covers URL/token generation, site binding and the forged-site case, HTML escaping, auth, site extraction against the real Frappe Cloud payloads (including bench and deploy ids that must not be read as hostnames), ball colours, recipient matching, dedupe, and log statuses.

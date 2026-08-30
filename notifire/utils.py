@@ -9,9 +9,9 @@
 import hmac
 import json
 import re
-from datetime import datetime, timedelta
 
 import frappe
+from frappe.utils import escape_html
 
 # a.b.c style hostnames only. Rejects bench/deploy ids such as
 # "bench-0019-000059-f2-london", "deploy-0019-000059", "368704046d".
@@ -35,15 +35,28 @@ BALL_GREEN = "\U0001F7E2"
 BALL_YELLOW = "\U0001F7E1"
 BALL_RED = "\U0001F534"
 
-# Frappe Cloud bookkeeping keys we never put in an email.
-NOISE = {
-    "doctype", "owner", "creation", "modified", "modified_by", "docstatus",
-    "idx", "team", "tags", "ip", "signup_time", "account_request",
-    "skip_auto_updates", "additional_system_user_created", "retry_count",
-    "is_database_access_enabled", "archive_failed", "setup_wizard_complete",
-    "database_access_connection_limit", "is_ssh_proxy_setup",
-    "inplace_update_docker_image",
-}
+# Allowlist, not a denylist: a key Frappe Cloud adds tomorrow is not mailed
+# out until someone puts it here on purpose. Order is display order.
+EMAIL_FIELDS = [
+    ("status", "Status"),
+    ("type", "Type"),
+    ("plan", "Plan"),
+    ("cluster", "Cluster"),
+    ("group", "Bench Group"),
+    ("server", "Server"),
+    ("bench", "Bench"),
+    ("build_start", "Build Start"),
+    ("build_end", "Build End"),
+    ("build_duration", "Build Duration"),
+    ("build_error", "Build Error"),
+    ("deployed", "Deployed"),
+    ("trial_end_date", "Trial Ends"),
+    ("timestamp", "Timestamp"),
+]
+
+# Reject a replayed capture whose own timestamp is ancient. Frappe Cloud only
+# sends a static shared secret, so this is the only freshness signal there is.
+STALE_EVENT_HOURS = 24
 
 EMAIL_HTML = """<!DOCTYPE html>
 <html>
@@ -55,7 +68,7 @@ EMAIL_HTML = """<!DOCTYPE html>
           <img src="https://frappe.io/files/framework.png" alt="Notifire" width="70">
         </td></tr>
         <tr><td style="padding:0 20px 20px">
-          <h2>{% if ball %}{{ ball }} {% endif %}{{ event }}</h2>
+          <h2>{{ ball }} {{ event }}</h2>
           {% for label, value in rows %}
           <p style="margin:4px 0"><strong>{{ label }}:</strong> {{ value }}</p>
           {% endfor %}
@@ -72,6 +85,11 @@ EMAIL_HTML = """<!DOCTYPE html>
 
 def settings():
     return frappe.get_cached_doc("Notifire Settings")
+
+
+def payload_data(payload):
+    data = payload.get("data")
+    return data if isinstance(data, dict) else {}
 
 
 def status_ball(status):
@@ -91,7 +109,11 @@ def valid_secret(provided, *expected):
     if not provided:
         return False
     given = str(provided).encode()
-    return any(e and hmac.compare_digest(given, str(e).encode()) for e in expected)
+    ok = False
+    for candidate in expected:
+        if candidate and hmac.compare_digest(given, str(candidate).encode()):
+            ok = True  # no early return: keep the work constant
+    return ok
 
 
 def extract_site(payload):
@@ -101,7 +123,7 @@ def extract_site(payload):
     data.host_name (and data.name). Bench and deploy events carry ids like
     "bench-0019-000059-f2-london", which must never be read as a hostname.
     """
-    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    data = payload_data(payload)
     for key in ("site", "host_name", "name"):
         value = data.get(key)
         if isinstance(value, str) and HOSTNAME_RE.match(value.strip()):
@@ -109,23 +131,47 @@ def extract_site(payload):
     return None
 
 
+def is_stale(payload):
+    """True when the payload's own timestamp is older than the cutoff.
+
+    Only a weak replay guard: events without a timestamp cannot be checked.
+    """
+    raw = payload_data(payload).get("timestamp")
+    if not raw:
+        return False
+    try:
+        sent = frappe.utils.get_datetime(raw)
+    except Exception:
+        return False
+    if not sent:
+        return False
+    cutoff = frappe.utils.add_to_date(frappe.utils.now_datetime(), hours=-STALE_EVENT_HOURS)
+    return sent < cutoff
+
+
 def find_recipients(site):
-    """Enabled recipients for a hostname.
+    """Enabled recipients for a hostname, in two queries.
 
     A recipient with no hostnames listed gets everything - that is also who
     receives bench and deploy events, which have no site at all.
     """
-    emails, seen = [], set()
-    for row in frappe.get_all(
+    rows = frappe.get_all(
         "Notifire Recipient", filters={"enabled": 1}, fields=["name", "email"], order_by="creation asc"
+    )
+    if not rows:
+        return []
+
+    scoped = {}
+    for row in frappe.get_all(
+        "Notifire Recipient Hostname",
+        filters={"parent": ("in", [r.name for r in rows]), "parenttype": "Notifire Recipient"},
+        fields=["parent", "hostname"],
     ):
-        hosts = [
-            h.strip().lower()
-            for h in frappe.get_all(
-                "Notifire Recipient Hostname", filters={"parent": row.name}, pluck="hostname"
-            )
-            if h
-        ]
+        scoped.setdefault(row.parent, set()).add((row.hostname or "").strip().lower())
+
+    emails, seen = [], set()
+    for row in rows:
+        hosts = scoped.get(row.name)
         if hosts and not (site and site in hosts):
             continue
         key = (row.email or "").strip().lower()
@@ -136,37 +182,43 @@ def find_recipients(site):
 
 
 def build_rows(event, site, data):
-    """The (label, value) lines shown in the email."""
+    """Escaped (label, value) lines for the email.
+
+    Everything here comes from an external payload and Frappe's Jinja
+    environment does not autoescape, so escaping happens at the source.
+    """
     rows = [("Event", event)]
     if site:
         rows.append(("Site", site))
-    if data.get("status"):
-        rows.append(("Status", str(data["status"])))
     if data.get("from_plan") or data.get("to_plan"):
         rows.append(("Change", "{} \u2192 {}".format(data.get("from_plan", "?"), data.get("to_plan", "?"))))
     if data.get("name") and not site:
         rows.append(("Reference", str(data["name"])))
 
-    shown = {label.lower() for label, _ in rows} | {"from_plan", "to_plan", "name", "host_name"}
-    for key, value in data.items():
-        if key.lower() in shown or key.lower() in NOISE or isinstance(value, (dict, list)):
+    for key, label in EMAIL_FIELDS:
+        value = data.get(key)
+        if value in (None, "", "None") or isinstance(value, (dict, list)):
             continue
-        rows.append((key.replace("_", " ").title(), str(value)))
-    return rows
+        rows.append((label, str(value)))
+
+    return [(escape_html(str(label)), escape_html(str(value))) for label, value in rows]
 
 
 def send_email(event, site, payload, recipients, log_name=None):
     """Send one notification. Returns (ok, error)."""
     conf = settings()
-    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    data = payload_data(payload)
     ref = site or data.get("name") or ""
     ball = status_ball(data.get("status"))
 
+    # Subject is plain text, so it is not escaped - but it must not carry
+    # newlines, which would let a payload inject mail headers.
     subject = "[{}] {}".format(conf.email_subject_prefix or "Notifire", event)
     if ref:
         subject += " - {}".format(ref)
     if ball:
         subject = "{} {}".format(ball, subject)
+    subject = re.sub(r"[\r\n]+", " ", subject)[:200]
 
     rows = build_rows(event, site, data)
     try:
@@ -174,11 +226,13 @@ def send_email(event, site, payload, recipients, log_name=None):
             recipients=recipients,
             sender=conf.from_email or "",
             subject=subject,
-            message=frappe.render_template(EMAIL_HTML, {"event": event, "ball": ball, "rows": rows}),
+            message=frappe.render_template(
+                EMAIL_HTML, {"event": escape_html(event), "ball": ball, "rows": rows}
+            ),
             text_content="\n".join("{}: {}".format(l, v) for l, v in rows),
             reference_doctype="Notifire Log",
             reference_name=log_name,
-            now=True,
+            now=not frappe.utils.cint(conf.queue_emails),
         )
         return True, ""
     except Exception as exc:  # a mail failure must never break the webhook
@@ -186,7 +240,7 @@ def send_email(event, site, payload, recipients, log_name=None):
 
 
 def create_log(event, site, payload, group, recipients, status, error=""):
-    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    data = payload_data(payload)
     return frappe.get_doc({
         "doctype": "Notifire Log",
         "event": event,
@@ -205,13 +259,17 @@ def is_duplicate(event, site, reference, minutes):
 
     A flapping site cycling Active -> Broken -> Active sends one webhook per
     transition, which is how you burn a daily mail quota in an hour.
+
+    The cutoff uses now_datetime(), i.e. the system timezone, because that is
+    what Frappe writes into `creation`. Comparing against utcnow() silently
+    stretches or disables the window by your UTC offset.
     """
     if not minutes:
         return False
     filters = {
         "event": event,
         "status": "Sent",
-        "creation": (">", datetime.utcnow() - timedelta(minutes=minutes)),
+        "creation": (">", frappe.utils.add_to_date(frappe.utils.now_datetime(), minutes=-minutes)),
         "site": site or "",
     }
     if not site:
@@ -222,7 +280,7 @@ def is_duplicate(event, site, reference, minutes):
 def process_event(event, payload, group=None):
     """Handle one webhook event end to end. Returns the log status."""
     conf = settings()
-    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    data = payload_data(payload)
     site = extract_site(payload)
     reference = site or data.get("name") or ""
     recipients = find_recipients(site)

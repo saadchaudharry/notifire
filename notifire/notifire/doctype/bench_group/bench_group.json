@@ -35,10 +35,11 @@
    "read_only": 1
   },
   {
-   "description": "Frappe Cloud sends this back in the X-Webhook-Secret header. Generated automatically.",
+   "description": "Sent back by Frappe Cloud in the X-Webhook-Secret header. Generated on save; use Copy Token to read it.",
    "fieldname": "token",
-   "fieldtype": "Data",
+   "fieldtype": "Password",
    "label": "Token",
+   "no_copy": 1,
    "read_only": 1
   },
   {

@@ -16,5 +16,8 @@ def after_install():
     if settings.dedupe_window_minutes in (None, ""):
         settings.dedupe_window_minutes = 10
     settings.enabled = 1
+    # Secure defaults: site binding on, master key off.
+    settings.strict_site_binding = 1
+    settings.allow_global_secret = 0
     settings.flags.ignore_permissions = True
     settings.save()

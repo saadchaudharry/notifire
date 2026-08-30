@@ -9,7 +9,10 @@
   "column_break_top",
   "from_email",
   "dedupe_window_minutes",
+  "queue_emails",
   "section_auth",
+  "strict_site_binding",
+  "allow_global_secret",
   "webhook_secret"
  ],
  "fields": [
@@ -52,11 +55,33 @@
    "label": "Authentication"
   },
   {
-   "description": "A master token accepted by every group, on top of each group's own token. Generated at install.",
+   "description": "Master token accepted by every group. Off by default: one leaked value would forge events for all groups.",
    "fieldname": "webhook_secret",
-   "fieldtype": "Data",
+   "fieldtype": "Password",
    "label": "Global Secret",
+   "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "default": "1",
+   "description": "Reject an event whose site is not listed on the bench group whose token was used. Turn this off only if you add sites in Frappe Cloud faster than you list them here.",
+   "fieldname": "strict_site_binding",
+   "fieldtype": "Check",
+   "label": "Strict Site Binding"
+  },
+  {
+   "default": "0",
+   "description": "Also accept the global secret below, on every group.",
+   "fieldname": "allow_global_secret",
+   "fieldtype": "Check",
+   "label": "Allow Global Secret"
+  },
+  {
+   "default": "0",
+   "description": "Hand mail to the background queue instead of sending it inside the webhook request. Faster responses, but needs workers running and the log says Sent once it is queued.",
+   "fieldname": "queue_emails",
+   "fieldtype": "Check",
+   "label": "Send Emails In Background"
   }
  ],
  "issingle": 1,

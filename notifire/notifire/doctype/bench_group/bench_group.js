@@ -16,7 +16,13 @@ frappe.ui.form.on("Bench Group", {
 			frappe.utils.copy_to_clipboard(frm.doc.webhook_url);
 		});
 		frm.add_custom_button(__("Copy Token"), () => {
-			frappe.utils.copy_to_clipboard(frm.doc.token);
+			frappe.call({
+				method: "notifire.api.get_token",
+				args: { group: frm.doc.name },
+				callback(r) {
+					frappe.utils.copy_to_clipboard((r.message && r.message.token) || "");
+				},
+			});
 		});
 		frm.add_custom_button(__("Regenerate Token"), () => {
 			frappe.confirm(
